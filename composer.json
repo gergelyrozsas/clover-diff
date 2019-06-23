@@ -1,0 +1,31 @@
+{
+    "name": "gergelyrozsas/cloverdiff",
+    "type": "library",
+    "description": "Clover Diff",
+    "keywords": ["clover", "diff", "ci", "devops"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Gergely Rózsás",
+            "email": "rozsasgergo@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.0",
+        "ext-simplexml": "*"
+    },
+    "require-dev": {
+        "symfony/filesystem": "^4.2"
+    },
+    "suggest": {
+        "symfony/filesystem": "Required for the built in HTML report generator."
+    },
+    "autoload": {
+        "psr-4": {
+            "GergelyRozsas\\CloverDiff\\": ""
+        },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
+    }
+}
