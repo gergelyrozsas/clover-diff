@@ -1,0 +1,26 @@
+language: php
+
+sudo: false
+
+php:
+  - 7.1
+  - 7.2
+  - 7.3
+
+matrix:
+  fast_finish: true
+
+env:
+  matrix:
+    - COMPOSER_FLAGS="--no-interaction --no-ansi --no-progress --no-suggest --prefer-lowest"
+    - COMPOSER_FLAGS="--no-interaction --no-ansi --no-progress --no-suggest"
+
+before_install:
+  - composer self-update
+  - composer clear-cache
+
+install:
+  - composer update $COMPOSER_FLAGS
+
+script:
+  - phpunit
