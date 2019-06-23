@@ -1,5 +1,5 @@
 {
-    "name": "gergelyrozsas/cloverdiff",
+    "name": "gergelyrozsas/clover-diff",
     "type": "library",
     "description": "Clover Diff",
     "keywords": ["clover", "diff", "ci", "devops"],
