@@ -5,7 +5,7 @@ namespace GergelyRozsas\CloverDiff;
 class Version {
 
   public static function id(): string {
-    return '0.0.0';
+    return '0.0.1';
   }
 
 }
