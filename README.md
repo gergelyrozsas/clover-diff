@@ -1,3 +1,7 @@
+[![Latest Stable Version](https://poser.pugx.org/gergelyrozsas/clover-diff/v/stable)](https://packagist.org/packages/gergelyrozsas/clover-diff)
+[![Build Status](https://travis-ci.org/gergelyrozsas/clover-diff.svg?branch=master)](https://travis-ci.org/gergelyrozsas/clover-diff)
+[![Code Coverage](https://codecov.io/gh/gergelyrozsas/clover-diff/branch/master/graphs/badge.svg?branch=master)](https://codecov.io/github/gergelyrozsas/clover-diff?branch=master)
+
 # GergelyRozsas\CloverDiff
 
 **GergelyRozsas\CloverDiff** is a library that provides processing and rendering functionality for comparing code coverage information from Clover XML files.
