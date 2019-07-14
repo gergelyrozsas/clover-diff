@@ -2,9 +2,12 @@
 
 namespace GergelyRozsas\CloverDiff\Report\Html\Renderer;
 
-use GergelyRozsas\CloverDiff\Diff\NodeDiff;
+use GergelyRozsas\CloverDiff\Node\Iterator\NodeIterator;
+use GergelyRozsas\CloverDiff\Node\DirectoryNode;
+use GergelyRozsas\CloverDiff\Node\Iterator\SortableIterator;
 use GergelyRozsas\CloverDiff\Report\Html\Engine\EngineInterface;
 use GergelyRozsas\CloverDiff\Report\Html\Engine\PhpEngine;
+use GergelyRozsas\CloverDiff\Report\Html\Utility\NodeSort;
 use GergelyRozsas\CloverDiff\Utility\Path;
 use GergelyRozsas\CloverDiff\Version;
 
@@ -35,17 +38,18 @@ class DirectoryRenderer {
     $this->directoryItemRenderer = $directory_item_renderer ?? new DirectoryItemRenderer($this->engine);
   }
 
-  public function render(NodeDiff $diff, array $options = []): string {
-    $items = [$this->directoryItemRenderer->render($diff, \array_merge($options, ['total' => TRUE]))];
+  public function render(DirectoryNode $node, array $options = []): string {
+    $items = [$this->directoryItemRenderer->render($node, \array_merge($options, ['total' => TRUE]))];
 
-    foreach ($this->getSortedChildren($diff) as $child) {
-      $items[] = $this->directoryItemRenderer->render($child, $options);
+    foreach ($this->getIterator($node) as $child_directory_node) {
+      $items[] = $this->directoryItemRenderer->render($child_directory_node, $options);
     }
 
     $rendered = $this->engine->render('directory.html', [
-      'full_path' => \implode('/', \array_merge(['root'], $diff->getPath())),
-      'breadcrumbs' => $this->getBreadcrumbs($diff),
-      'path_to_root' => $this->getPathToRoot($diff),
+      'full_path' => \implode('/', \array_merge(['root'], $node->getPath())),
+      'breadcrumbs' => $this->getBreadcrumbs($node),
+      'path_to_root' => $this->getPathToRoot($node),
+      'revisions' => $node->getRevisions(),
       'items' => $items,
       'low_upper_bound' => $options['lo_upper_level'],
       'high_lower_bound' => $options['hi_lower_level'],
@@ -58,25 +62,18 @@ class DirectoryRenderer {
     return $rendered;
   }
 
-  private function getSortedChildren(NodeDiff $diff): iterable {
-    $children = \iterator_to_array($diff->getChildren());
-    \uasort($children, function(NodeDiff $diff1, NodeDiff $diff2): int {
-      $diff1_is_dir = (int) $diff1->isDirectoryNode();
-      $diff2_is_dir = (int) $diff2->isDirectoryNode();
-      if ($diff1_is_dir === $diff2_is_dir) {
-        return \strcmp($diff1->getName(), $diff2->getName());
-      }
-      return $diff2_is_dir - $diff1_is_dir;
-    });
-    return new \ArrayIterator($children);
+  private function getIterator(DirectoryNode $node): iterable {
+    $iterator = new NodeIterator($node);
+    $iterator = new SortableIterator($iterator, NodeSort::sortByType());
+    return $iterator;
   }
 
-  private function getPathToRoot(NodeDiff $diff) {
-    return Path::getPathToRoot(\count($diff->getPath()));
+  private function getPathToRoot(DirectoryNode $node) {
+    return Path::getPathToRoot(\count($node->getPath()));
   }
 
-  private function getBreadcrumbs(NodeDiff $diff): string {
-    return $this->breadcrumbRenderer->render($diff);
+  private function getBreadcrumbs(DirectoryNode $node): string {
+    return $this->breadcrumbRenderer->render($node);
   }
 
   private function formatDate(int $timestamp): string {

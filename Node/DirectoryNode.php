@@ -2,49 +2,44 @@
 
 namespace GergelyRozsas\CloverDiff\Node;
 
+use GergelyRozsas\CloverDiff\Node\Revision\DirectoryNodeRevision;
+use GergelyRozsas\CloverDiff\Node\Revision\FileNodeRevision;
+
 class DirectoryNode extends AbstractNode {
 
   /**
-   * @var \GergelyRozsas\CloverDiff\Node\AbstractNode[]
+   * @var \GergelyRozsas\CloverDiff\Node\NodeInterface[]
    */
-  public $children = [];
+  private $children = [];
 
   public function __construct(array $path = []) {
     $this->path = $path;
   }
 
   /**
+   * {@inheritdoc}
+   *
    * @codeCoverageIgnore
    */
   public function getChildren(): array {
     return $this->children;
   }
 
-  public function getChild(array $path_elements): ?AbstractNode {
-    if (empty($path_elements)) {
-      return NULL;
-    }
-
-    $name = \array_shift($path_elements);
-    if (!isset($this->children[$name])) {
-      return NULL;
-    }
-
-    $child = $this->children[$name];
-    if (!$path_elements) {
-      return $child;
-    }
-
-    return ($child instanceof DirectoryNode) ? $child->getChild($path_elements) : NULL;
-  }
-
   /**
+   * {@inheritdoc}
+   *
    * @codeCoverageIgnore
    */
   public function hasChildren(): bool {
     return (bool) $this->children;
   }
 
+  /**
+   * Adds a file node to the directory node.
+   *
+   * @param \GergelyRozsas\CloverDiff\Node\FileNode $file
+   *   The file node to add.
+   */
   public function addFile(FileNode $file): void {
     $this->doAddFile([], $file->getPath(), $file);
     $this->addFileMetrics($file);
@@ -66,8 +61,17 @@ class DirectoryNode extends AbstractNode {
   }
 
   private function addFileMetrics(FileNode $file): void {
-    $this->elements += $file->getElements();
-    $this->coveredElements += $file->getCoveredElements();
+    foreach ($file->getRevisions() as $revision) {
+      $this->addFileRevisionMetrics($revision);
+    }
+  }
+
+  private function addFileRevisionMetrics(FileNodeRevision $file_node_revision): void {
+    $revision_id = $file_node_revision->getRevisionId();
+    /** @var \GergelyRozsas\CloverDiff\Node\Revision\DirectoryNodeRevision $revision */
+    $revision = &$this->revisions[$revision_id];
+    $revision = $revision ?? new DirectoryNodeRevision($this, $revision_id, $file_node_revision->getTimestamp());
+    $revision->addFileNodeRevision($file_node_revision);
   }
 
 }
