@@ -2,8 +2,9 @@
 
 namespace GergelyRozsas\CloverDiff\Report\Html\Renderer;
 
-use GergelyRozsas\CloverDiff\Diff\NodeDiff;
+use GergelyRozsas\CloverDiff\Node\NodeInterface;
 use GergelyRozsas\CloverDiff\Report\Html\Engine\EngineInterface;
+use GergelyRozsas\CloverDiff\Report\Html\Utility\NodeMath;
 
 class DirectoryItemRenderer {
 
@@ -32,17 +33,15 @@ class DirectoryItemRenderer {
     $this->diffBarRenderer = $diff_bar_renderer ?? new DiffBarRenderer($this->engine);
   }
 
-  public function render(NodeDiff $diff, array $options) {
-    $diff_percent = $diff->getPercentageDiff();
+  public function render(NodeInterface $node, array $options) {
+    $diff_percent = NodeMath::getPercentageDiff(
+      $node->getRevision(-1),
+      $node->getRevision(0)
+    );
     $data = array(
       'icon' => '',
       'name' => '',
-      'old_lines_bar' => $this->getCoverageBar($diff->getOldPercentage(), $options),
-      'old_lines_percentage' => $this->formatFloat($diff->getOldPercentage()),
-      'old_lines_number' => $this->formatLinesNumbers($diff->getOldCoveredElements(), $diff->getOldElements()),
-      'new_lines_bar' => $this->getCoverageBar($diff->getNewPercentage(), $options),
-      'new_lines_percentage' => $this->formatFloat($diff->getNewPercentage()),
-      'new_lines_number' => $this->formatLinesNumbers($diff->getNewCoveredElements(), $diff->getNewElements()),
+      'revisions' => $this->getRevisions($node, $options),
       'diff_percentage' => $this->formatFloat($diff_percent, '+'),
       'diff_bar' => $this->getDiffBar($diff_percent, $options),
       'diff_level' => $this->getDiffColorLevel($diff_percent, $options),
@@ -51,19 +50,33 @@ class DirectoryItemRenderer {
     if (!empty($options['total'])) {
       $data['name'] = 'Total';
     }
-    elseif ($diff->isDirectoryNode()) {
+    elseif ($node->hasChildren()) {
       $data['icon'] = '<span class="glyphicon glyphicon-folder-open"></span> ';
       $data['name'] = \vsprintf('<a href="%s/index.html">%s</a>', [
-        $diff->getName(),
-        $diff->getName(),
+        $node->getName(),
+        $node->getName(),
       ]);
     }
     else {
       $data['icon'] = '<span class="glyphicon glyphicon-file"></span> ';
-      $data['name'] = $diff->getName();
+      $data['name'] = $node->getName();
     }
 
     return $data;
+  }
+
+  private function getRevisions(NodeInterface $node, array $options): array {
+    $output = [];
+    $revisions = $node->getRevisions();
+    foreach ($revisions as $revision_id => $revision) {
+      $percentage = NodeMath::getPercentage($revision);
+      $output[] = [
+        'bar' => $this->getCoverageBar($percentage, $options),
+        'percentage' => $this->formatFloat($percentage),
+        'lines_number' => $this->formatLinesNumbers($revision->getCoveredElements(), $revision->getElements()),
+      ];
+    }
+    return $output;
   }
 
   private function getCoverageBar(?float $percent, array $options): string {

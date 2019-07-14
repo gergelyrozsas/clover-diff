@@ -13,7 +13,7 @@
     </head>
     <body>
         <header>
-            <div class="container">
+            <div class="container-fluid">
                 <div class="row">
                     <div class="col-md-12">
                         <ol class="breadcrumb"><?php
@@ -23,17 +23,18 @@
                 </div>
             </div>
         </header>
-        <div class="container">
+        <div class="container-fluid">
             <table class="table table-bordered">
                 <thead>
                 <tr>
                     <td>&nbsp;</td>
-                    <td colspan="9"><div align="center"><strong>Code Coverage</strong></div></td>
+                    <td colspan="<?php echo (count($revisions) + 1) * 3 ?>"><div align="center"><strong>Code Coverage</strong></div></td>
                 </tr>
                 <tr>
                     <td>&nbsp;</td>
-                    <td colspan="3"><div align="center"><strong>Older Version Coverage</strong></div></td>
-                    <td colspan="3"><div align="center"><strong>Newer Version Coverage</strong></div></td>
+                <?php foreach ($revisions as $revision): ?>
+                    <td colspan="3"><div align="center"><strong>Code Coverage (<?php echo date('Y-m-d H:i:s', $revision->getTimestamp()) ?>)</strong></div></td>
+                <?php endforeach ?>
                     <td colspan="3"><div align="center"><strong>Coverage Difference</strong></div></td>
                 </tr>
                 </thead>
