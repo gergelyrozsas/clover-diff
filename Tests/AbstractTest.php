@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 abstract class AbstractTest extends TestCase {
 
-  protected function setObjectProperty(object $object, string $property, $value): void {
+  protected function setObjectProperty($object, string $property, $value): void {
     $reflection = new \ReflectionObject($object);
     $reflection_property = $reflection->getProperty($property);
     $accessible = $reflection_property->isPublic();
