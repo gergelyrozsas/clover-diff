@@ -3,9 +3,7 @@
 namespace GergelyRozsas\CloverDiff;
 
 use GergelyRozsas\CloverDiff\Clover\Clover;
-use GergelyRozsas\CloverDiff\Clover\FileMetrics;
 use GergelyRozsas\CloverDiff\Clover\Parser;
-use GergelyRozsas\CloverDiff\Diff\RecursiveNodeDiffIterator;
 use GergelyRozsas\CloverDiff\Node\DirectoryNode;
 use GergelyRozsas\CloverDiff\Node\FileNode;
 
@@ -26,42 +24,66 @@ class CloverDiff {
   }
 
   /**
-   * Compares two Clover files and return an iterable report.
+   * Compares Clover files and returns a comparison object.
    *
-   * @param $clover_1_file_path string
-   *   The path of the first Clover file.
-   * @param $clover_2_file_path string
-   *   The path of the second Clover file.
+   * @param array $clover_file_paths
+   *   An array of clover file paths to compare.
    *
-   * @return \GergelyRozsas\CloverDiff\Diff\NodeDiff[]|\RecursiveIteratorIterator
+   * @throws \InvalidArgumentException
+   *   When less than two file paths are supplied.
+   *
+   * @return \GergelyRozsas\CloverDiff\Node\DirectoryNode
    */
-  public function compare(string $clover_1_file_path, string $clover_2_file_path): iterable {
-    $clover_1 = $this->parser->parse($clover_1_file_path);
-    $clover_2 = $this->parser->parse($clover_2_file_path);
-    $iterator = $this->prepareRecursiveNodeDiffIterator($clover_1, $clover_2);
-    return new \RecursiveIteratorIterator($iterator, \RecursiveIteratorIterator::SELF_FIRST);
-  }
-
-  private function prepareRecursiveNodeDiffIterator(Clover $clover_1, Clover $clover_2): RecursiveNodeDiffIterator {
-    $newer_clover = $clover_1->getTimestamp() <= $clover_2->getTimestamp() ? $clover_2 : $clover_1;
-    $older_clover = $clover_1->getTimestamp() <= $clover_2->getTimestamp() ? $clover_1 : $clover_2;
-
-    $newer_node = new DirectoryNode();
-    $older_node = new DirectoryNode();
-
-    foreach ($newer_clover->getFiles() as $file_name => $new_metrics) {
-      $path = \explode('/', $file_name);
-      $newer_node->addFile($this->createFileNode($path, $new_metrics));
-      if ($old_metrics = $older_clover->getFile($file_name)) {
-        $older_node->addFile($this->createFileNode($path, $old_metrics));
-      }
+  public function compare(array $clover_file_paths): DirectoryNode {
+    if (\count($clover_file_paths) < 2) {
+      throw new \InvalidArgumentException('At least two Clover file paths must be specified.');
     }
 
-    return new RecursiveNodeDiffIterator(['root' => $newer_node], ['root' => $older_node]);
+    $clovers = $this->parseCloverFiles($clover_file_paths);
+    $clovers = $this->sortCloversByTimestampAscending($clovers);
+    $directory = $this->buildDirectoryNode($clovers);
+    return $directory;
   }
 
-  private function createFileNode(array $path, FileMetrics $file_metrics): FileNode {
-    return new FileNode($path, $file_metrics->getElements(), $file_metrics->getCoveredElements());
+  private function parseCloverFiles(array $clover_file_paths): array {
+    $clovers = \array_map(function(string $clover_file_path): Clover {
+      return $this->parser->parse($clover_file_path);
+    }, $clover_file_paths);
+    return $clovers;
+  }
+
+  private function sortCloversByTimestampAscending(array $clovers): array {
+    \usort($clovers, function(Clover $a, Clover $b): int {
+      return $a->getTimestamp() - $b->getTimestamp();
+    });
+    return $clovers;
+  }
+
+  private function buildDirectoryNode(array $clovers): DirectoryNode {
+    /** @var \GergelyRozsas\CloverDiff\Clover\Clover[] $clovers */
+    $latest = \end($clovers);
+    $node = new DirectoryNode();
+    foreach ($latest->getFiles() as $file_name => $file_metrics) {
+      $file = $this->buildFileNode($file_name, $clovers);
+      $node->addFile($file);
+    }
+    return $node;
+  }
+
+  private function buildFileNode(string $file_name, array $clovers): FileNode {
+    /** @var \GergelyRozsas\CloverDiff\Clover\Clover[] $clovers */
+    $path = \explode('/', $file_name);
+    $file = new FileNode($path);
+    foreach ($clovers as $revision_id => $clover) {
+      $revision_metrics = $clover->getFile($file_name);
+      $file->addRevision(
+        $revision_id,
+        $clover->getTimestamp(),
+        $revision_metrics ? $revision_metrics->getElements() : NULL,
+        $revision_metrics ? $revision_metrics->getCoveredElements() : NULL
+      );
+    }
+    return $file;
   }
 
 }
