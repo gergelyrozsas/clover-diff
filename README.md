@@ -18,16 +18,27 @@ This library can be installed via [Composer](https://getcomposer.org/):
 <?php
 
 use GergelyRozsas\CloverDiff\CloverDiff;
+use GergelyRozsas\CloverDiff\Node\Iterator\RecursiveNodeIterator;
 
 $diff = new CloverDiff();
-$report = $diff->compare('/path/to/clover1.xml', '/path/to/clover2.xml');
+$report = $diff->compare([
+  '/path/to/clover1.xml',
+  '/path/to/clover2.xml',
+]);
 
-foreach ($report as $node_diff) {
-  if ($node_diff->isDirectoryNode()) {
-    // ...
-  }
-  else {
-    // ...
+$iterator = new \RecursiveIteratorIterator(
+  new RecursiveNodeIterator($report),
+  \RecursiveIteratorIterator::SELF_FIRST
+); 
+
+/** @var \GergelyRozsas\CloverDiff\Node\NodeInterface $node */
+foreach ($iterator as $node) {
+  foreach ($node->getRevisions() as $revision) {
+    echo \vsprintf("Coverage for %s on %s was %.2f%%.\n", [
+      \implode('/', $node->getPath()),
+      \date('Y-m-d H:i:s', $revision->getTimestamp()),
+      \round(100 * $revision->getCoveredElements() / $revision->getElements()),
+    ]);
   }
 }
 ```
@@ -41,7 +52,10 @@ use GergelyRozsas\CloverDiff\CloverDiff;
 use GergelyRozsas\CloverDiff\Report;
 
 $diff = new CloverDiff();
-$report = $diff->compare('/path/to/clover1.xml', '/path/to/clover2.xml');
+$report = $diff->compare([
+  '/path/to/clover1.xml',
+  '/path/to/clover2.xml',
+]);
 
 $generator = new Report\Html();
 $options = $generator->process($report);
