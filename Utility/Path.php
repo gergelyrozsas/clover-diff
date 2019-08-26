@@ -4,20 +4,32 @@ namespace GergelyRozsas\CloverDiff\Utility;
 
 class Path {
 
-  public static function commonPrefix(array $paths): string {
+  public static function commonDirectory(array $paths): string {
     if (empty($paths)) {
       return '';
     }
 
     $s1 = \min($paths);
     $s2 = \max($paths);
+    $result = $s1;
     foreach (\str_split($s1) as $index => $character) {
       if ($character !== $s2[$index]) {
-        return \substr($s1, 0, $index);
+        $result = \substr($s1, 0, $index);
+        break;
       }
     }
 
-    return $s1;
+    $result = \preg_replace('#([^/\\\\]*)$#', '', $result);
+    return $result;
+  }
+
+  public static function commonFilePath(array $paths): string {
+    $reversed_paths = \array_map(function(string $path): string {
+      return \strrev($path);
+    }, $paths);
+
+    $prefix = static::commonDirectory($reversed_paths);
+    return \strrev($prefix);
   }
 
   public static function toUnixStyle(string $path): string {
@@ -37,7 +49,12 @@ class Path {
   }
 
   public static function getPathToRoot(int $depth): string {
-    return str_repeat('../', $depth);
+    return \str_repeat('../', $depth);
+  }
+
+  public static function isEmptyPath(string $path): bool {
+    $unix_style_path = self::toUnixStyle($path);
+    return (('' === $unix_style_path) || ('/' === $unix_style_path));
   }
 
 }
