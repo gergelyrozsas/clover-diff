@@ -3,13 +3,17 @@
 namespace GergelyRozsas\CloverDiff\Tests\Clover;
 
 use GergelyRozsas\CloverDiff\Clover\Clover;
-use GergelyRozsas\CloverDiff\Clover\FileMetrics;
-use PHPUnit\Framework\TestCase;
+use GergelyRozsas\CloverDiff\Clover\Element\ClassElement;
+use GergelyRozsas\CloverDiff\Clover\Element\CoverageElement;
+use GergelyRozsas\CloverDiff\Clover\Element\FileElement;
+use GergelyRozsas\CloverDiff\Clover\Element\PackageElement;
+use GergelyRozsas\CloverDiff\Clover\Element\ProjectElement;
+use GergelyRozsas\CloverDiff\Tests\AbstractTest;
 
 /**
  * @covers \GergelyRozsas\CloverDiff\Clover\Clover
  */
-class CloverTest extends TestCase {
+class CloverTest extends AbstractTest {
 
   /**
    * @var \GergelyRozsas\CloverDiff\Clover\Clover
@@ -17,83 +21,82 @@ class CloverTest extends TestCase {
   private $unit;
 
   /**
+   * @var \GergelyRozsas\CloverDiff\Clover\Element\CoverageElement|\Prophecy\Prophecy\ObjectProphecy
+   */
+  private $coverage;
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
-    $this->unit = new Clover();
+    $this->coverage = $this->prophesize(CoverageElement::class);
+    $this->unit = new Clover($this->coverage->reveal(), 1);
+  }
+
+  public function testGetTimestamp(): void {
+    $this->coverage->getGenerated()->willReturn(1234);
+    $this->assertEquals(1234, $this->unit->getTimestamp());
+  }
+
+  public function testGetProject(): void {
+    $project = $this->prophesize(ProjectElement::class)->reveal();
+    $this->coverage->getProject()->willReturn($project);
+    $this->assertSame($project, $this->unit->getProject());
   }
 
   /**
-   * @dataProvider dataProvider
+   * @dataProvider getElementsDataProvider
    */
-  public function testUnit(array $case): void {
-    foreach ($case as $step) {
-      if (isset($step['file_to_add'])) {
-        $this->unit->addFile(
-          $step['file_to_add']['absolute_file_path'],
-          $step['file_to_add']['file_metrics']
-        );
-      }
-
-      $iterator = $this->unit->getFiles();
-      $this->assertEquals($step['expected_get_files_iterator'], $iterator);
-
-      foreach ($iterator as $relative_file_path => $file_metrics) {
-        $this->assertSame($this->unit->getFile($relative_file_path), $file_metrics);
-      }
-      $this->assertNull($this->unit->getFile('any/other/relative/path'));
-    }
+  public function testGetElements(string $method): void {
+    $iterator = $this->prophesize(\Iterator::class)->reveal();
+    $this->coverage->{$method}()->willReturn($iterator);
+    $this->assertSame($iterator, $this->unit->{$method}());
   }
 
-  public function dataProvider(): iterable {
-    $cases = [
-      'case: three files are added' => [
-        [
-          'baseline: no files are added yet' => [
-            'expected_get_file_results' => [
-              'any/relative/path' => NULL,
-            ],
-            'expected_get_files_iterator' => new \ArrayIterator([]),
-          ],
-          'step_1: only one file added, so the only valid relative path should be an empty string' => [
-            'file_to_add' => [
-              'absolute_file_path' => '/root/dir1/sub1/file1',
-              'file_metrics' => $file_metrics_1 = $this->createFileMetrics()
-            ],
-            'expected_get_files_iterator' => new \ArrayIterator([
-              '' => $file_metrics_1,
-            ]),
-          ],
-          'step_2: another file is added in /root/dir1, so this directory should be the base of valid relative paths' => [
-            'file_to_add' => [
-              'absolute_file_path' => '/root/dir1/file2',
-              'file_metrics' => $file_metrics_2 = $this->createFileMetrics()
-            ],
-            'expected_get_files_iterator' => new \ArrayIterator([
-              'sub1/file1' => $file_metrics_1,
-              'file2' => $file_metrics_2,
-            ]),
-          ],
-          'step_3: another file is added in /root/dir1/sub1/sub_sub1, this should not have affect on the base of valid relative paths' => [
-            'file_to_add' => [
-              'absolute_file_path' => '/root/dir1/sub1/sub_sub1/file3',
-              'file_metrics' => $file_metrics_3 = $this->createFileMetrics()
-            ],
-            'expected_get_files_iterator' => new \ArrayIterator([
-              'sub1/file1' => $file_metrics_1,
-              'file2' => $file_metrics_2,
-              'sub1/sub_sub1/file3' => $file_metrics_3,
-            ]),
-          ],
-        ],
+  public function getElementsDataProvider(): iterable {
+    return [
+      'getPackages' => [
+        'method' => 'getPackages',
+      ],
+      'getFiles' => [
+        'method' => 'getFiles',
+      ],
+      'getClasses' => [
+        'method' => 'getClasses',
       ],
     ];
-    return $cases;
   }
 
-  private function createFileMetrics(): FileMetrics {
-    $file_metrics = $this->prophesize(FileMetrics::class);
-    return $file_metrics->reveal();
+  /**
+   * @dataProvider getElementDataProvider
+   */
+  public function testGetElement(string $element_class, string $forward_method_name, string $unit_method_name): void {
+    $element = $this->prophesize($element_class)->reveal();
+    $this->coverage->{$forward_method_name}()->willReturn([
+      'valid-key' => $element,
+    ]);
+    $this->assertNull($this->unit->{$unit_method_name}('any string other than "valid-key"'));
+    $this->assertSame($element, $this->unit->{$unit_method_name}('valid-key'));
+  }
+
+  public function getElementDataProvider(): iterable {
+    return [
+      'getPackage' => [
+        'element_class' => PackageElement::class,
+        'forward_method_name' => 'getPackages',
+        'unit_method_name' => 'getPackage',
+      ],
+      'getFile' => [
+        'element_class' => FileElement::class,
+        'forward_method_name' => 'getFiles',
+        'unit_method_name' => 'getFile',
+      ],
+      'getClass' => [
+        'element_class' => ClassElement::class,
+        'forward_method_name' => 'getClasses',
+        'unit_method_name' => 'getClass',
+      ],
+    ];
   }
 
 }
