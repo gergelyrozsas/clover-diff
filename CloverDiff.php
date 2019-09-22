@@ -40,6 +40,8 @@ class CloverDiff {
    *
    * @throws \InvalidArgumentException
    *   When less than two file paths are supplied.
+   * @throws \RuntimeException
+   *   When the specified Clovers cannot be compared for some reason.
    *
    * @return \GergelyRozsas\CloverDiff\Node\DirectoryNode
    */
@@ -78,7 +80,7 @@ class CloverDiff {
     }
     $overall_common_directory = Path::commonDirectory($file_names);
     if (Path::isEmptyPath($overall_common_directory)) {
-      throw new \InvalidArgumentException('Your Clovers cannot be compared. The selected normalizer did not convert all of the file names.');
+      throw new \RuntimeException('Your Clovers cannot be compared. The selected normalizer did not convert all of the file names.');
     }
     return $overall_common_directory;
   }
