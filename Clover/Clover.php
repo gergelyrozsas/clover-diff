@@ -2,67 +2,86 @@
 
 namespace GergelyRozsas\CloverDiff\Clover;
 
-use GergelyRozsas\CloverDiff\Utility\Path;
+use GergelyRozsas\CloverDiff\Clover\Element\ClassElement;
+use GergelyRozsas\CloverDiff\Clover\Element\CoverageElement;
+use GergelyRozsas\CloverDiff\Clover\Element\FileElement;
+use GergelyRozsas\CloverDiff\Clover\Element\PackageElement;
+use GergelyRozsas\CloverDiff\Clover\Element\ProjectElement;
+use GergelyRozsas\CloverDiff\Utility\IterableUtil;
 
 class Clover {
 
   /**
+   * @var \GergelyRozsas\CloverDiff\Clover\Element\CoverageElement
+   */
+  private $coverage;
+
+  /**
    * @var int
    */
-  private $timestamp = 0;
+  private $revisionId;
 
-  /**
-   * @var \GergelyRozsas\CloverDiff\Clover\FileMetrics[]
-   */
-  private $files = [];
-
-  /**
-   * @var \GergelyRozsas\CloverDiff\Clover\FileMetrics[]
-   */
-  private $normalizedFiles = [];
+  public function __construct(CoverageElement $coverage, int $revision_id) {
+    $this->coverage = $coverage;
+    $this->revisionId = $revision_id;
+  }
 
   /**
    * @codeCoverageIgnore
    */
+  public function getRevisionId(): int {
+    return $this->revisionId;
+  }
+
   public function getTimestamp(): int {
-    return $this->timestamp;
+    return $this->coverage->getGenerated();
   }
 
   /**
    * @codeCoverageIgnore
    */
-  public function setTimestamp(int $timestamp): void {
-    $this->timestamp = $timestamp;
+  public function getCoverage(): CoverageElement {
+    return $this->coverage;
   }
 
-  public function addFile(string $absolute_file_path, FileMetrics $file_metrics): void {
-    $this->normalizedFiles = NULL;
-    $this->files[$absolute_file_path] = $file_metrics;
+  public function getProject(): ProjectElement {
+    return $this->coverage->getProject();
   }
 
-  public function getFile(string $relative_file_path): ?FileMetrics {
-    $this->normalizeFiles();
-    return $this->normalizedFiles[$relative_file_path] ?? NULL;
+  public function getPackage(string $package_name): ?PackageElement {
+    $packages = IterableUtil::iterableToArray($this->getPackages());
+    return $packages[$package_name] ?? NULL;
   }
 
   /**
-   * @return \GergelyRozsas\CloverDiff\Clover\FileMetrics[]
+   * @return \GergelyRozsas\CloverDiff\Clover\Element\PackageElement[]|iterable
+   */
+  public function getPackages(): iterable {
+    return $this->coverage->getPackages();
+  }
+
+  public function getFile(string $file_name): ?FileElement {
+    $files = IterableUtil::iterableToArray($this->getFiles());
+    return $files[$file_name] ?? NULL;
+  }
+
+  /**
+   * @return \GergelyRozsas\CloverDiff\Clover\Element\FileElement[]|iterable
    */
   public function getFiles(): iterable {
-    $this->normalizeFiles();
-    return new \ArrayIterator($this->normalizedFiles);
+    return $this->coverage->getFiles();
   }
 
-  private function normalizeFiles(): void {
-    if (NULL === $this->normalizedFiles) {
-      $this->normalizedFiles = [];
-      $common_prefix = Path::commonPrefix(\array_keys($this->files));
-      $common_prefix_length = \strlen($common_prefix);
-      foreach ($this->files as $absolutefile_path => $file) {
-        $relative_file_path = \substr($absolutefile_path, $common_prefix_length);
-        $this->normalizedFiles[$relative_file_path] = $file;
-      }
-    }
+  public function getClass(string $class_name): ?ClassElement {
+    $classes = IterableUtil::iterableToArray($this->getClasses());
+    return $classes[$class_name] ?? NULL;
+  }
+
+  /**
+   * @return \GergelyRozsas\CloverDiff\Clover\Element\ClassElement[]|iterable
+   */
+  public function getClasses(): iterable {
+    return $this->coverage->getClasses();
   }
 
 }

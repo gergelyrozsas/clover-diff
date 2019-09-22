@@ -2,10 +2,16 @@
 
 namespace GergelyRozsas\CloverDiff;
 
-use GergelyRozsas\CloverDiff\Clover\Clover;
+use GergelyRozsas\CloverDiff\Clover\CloverCollection;
 use GergelyRozsas\CloverDiff\Clover\Parser;
+use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\DelegatingCollectionNormalizer;
+use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CommonClassBasedCollectionNormalizer;
+use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\EquivalentRootDirectoryBasedCollectionNormalizer;
+use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CollectionNormalizerInterface;
+use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CollectionNormalizerResolver;
 use GergelyRozsas\CloverDiff\Node\DirectoryNode;
 use GergelyRozsas\CloverDiff\Node\FileNode;
+use GergelyRozsas\CloverDiff\Utility\Path;
 
 /**
  * @codeCoverageIgnore
@@ -17,10 +23,22 @@ class CloverDiff {
    */
   private $parser;
 
+  /**
+   * @var \GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CollectionNormalizerInterface
+   */
+  private $normalizer;
+
   public function __construct(
-    ?Parser $parser = NULL
+    ?Parser $parser = NULL,
+    ?CollectionNormalizerInterface $normalizer = NULL
   ) {
     $this->parser = $parser ?? new Parser();
+    $this->normalizer = $normalizer ?? new DelegatingCollectionNormalizer(
+      new CollectionNormalizerResolver([
+        20 => [new EquivalentRootDirectoryBasedCollectionNormalizer()],
+        10 => [new CommonClassBasedCollectionNormalizer()],
+      ])
+    );
   }
 
   /**
@@ -40,47 +58,66 @@ class CloverDiff {
     }
 
     $clovers = $this->parseCloverFiles($clover_file_paths);
-    $clovers = $this->sortCloversByTimestampAscending($clovers);
-    $directory = $this->buildDirectoryNode($clovers);
-    return $directory;
+    $this->normalizeClovers($clovers);
+    return $this->buildDirectoryNode($clovers);
   }
 
-  private function parseCloverFiles(array $clover_file_paths): array {
-    $clovers = \array_map(function(string $clover_file_path): Clover {
-      return $this->parser->parse($clover_file_path);
-    }, $clover_file_paths);
-    return $clovers;
+  private function parseCloverFiles(array $clover_file_paths): CloverCollection {
+    return $this->parser->parse($clover_file_paths);
   }
 
-  private function sortCloversByTimestampAscending(array $clovers): array {
-    \usort($clovers, function(Clover $a, Clover $b): int {
-      return $a->getTimestamp() - $b->getTimestamp();
-    });
-    return $clovers;
+  private function normalizeClovers(CloverCollection $clovers): void {
+    $this->doNormalizeClovers($clovers);
+    $overall_common_directory = $this->getOverallCommonDirectory($clovers);
+    $this->convertFilePathsToRelative($clovers, $overall_common_directory);
   }
 
-  private function buildDirectoryNode(array $clovers): DirectoryNode {
-    /** @var \GergelyRozsas\CloverDiff\Clover\Clover[] $clovers */
-    $latest = \end($clovers);
+  private function doNormalizeClovers(CloverCollection $clovers): void {
+    if (!$this->normalizer->supports($clovers)) {
+      throw new \RuntimeException('Your Clovers cannot be compared. No suitable normalizer was found.');
+    }
+
+    $this->normalizer->normalize($clovers);
+  }
+
+  private function getOverallCommonDirectory(CloverCollection $clovers): string {
+    $file_names = [];
+    foreach ($clovers->getFiles() as $file) {
+      $file_names[] = $file->getName();
+    }
+    $overall_common_directory = Path::commonDirectory($file_names);
+    if (Path::isEmptyPath($overall_common_directory)) {
+      throw new \InvalidArgumentException('Your Clovers cannot be compared. The selected normalizer did not convert all of the file names.');
+    }
+    return $overall_common_directory;
+  }
+
+  private function convertFilePathsToRelative(CloverCollection $clovers, string $overall_common_directory): void {
+    foreach ($clovers->getFiles() as $file) {
+      $relative_file_name = \preg_replace("#^{$overall_common_directory}#", '', $file->getName());
+      $file->setName($relative_file_name);
+    }
+  }
+
+  private function buildDirectoryNode(CloverCollection $clovers): DirectoryNode {
     $node = new DirectoryNode();
-    foreach ($latest->getFiles() as $file_name => $file_metrics) {
-      $file = $this->buildFileNode($file_name, $clovers);
-      $node->addFile($file);
+    foreach ($clovers->getLatest()->getFiles() as $file) {
+      $file_node = $this->buildFileNode($file->getName(), $clovers);
+      $node->addFile($file_node);
     }
     return $node;
   }
 
-  private function buildFileNode(string $file_name, array $clovers): FileNode {
-    /** @var \GergelyRozsas\CloverDiff\Clover\Clover[] $clovers */
+  private function buildFileNode(string $file_name, CloverCollection $clovers): FileNode {
     $path = \explode('/', $file_name);
     $file = new FileNode($path);
-    foreach ($clovers as $revision_id => $clover) {
-      $revision_metrics = $clover->getFile($file_name);
+    foreach ($clovers as $clover) {
+      $clover_file = $clover->getFile($file_name);
       $file->addRevision(
-        $revision_id,
+        $clover->getRevisionId(),
         $clover->getTimestamp(),
-        $revision_metrics ? $revision_metrics->getElements() : NULL,
-        $revision_metrics ? $revision_metrics->getCoveredElements() : NULL
+        $clover_file ? $clover_file->getMetrics()->getElements() : NULL,
+        $clover_file ? $clover_file->getMetrics()->getCoveredElements() : NULL
       );
     }
     return $file;
