@@ -41,7 +41,9 @@ class CollectionNormalizerResolver implements CollectionNormalizerResolverInterf
 
   private function sortNormalizers(): void {
     if (isset($this->sorted)) {
+      // @codeCoverageIgnoreStart
       return;
+      // @codeCoverageIgnoreEnd
     }
 
     $this->sorted = [];
