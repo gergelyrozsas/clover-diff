@@ -17,10 +17,10 @@ This library can be installed via [Composer](https://getcomposer.org/):
 ```php
 <?php
 
-use GergelyRozsas\CloverDiff\CloverDiff;
+use GergelyRozsas\CloverDiff\Factory;
 use GergelyRozsas\CloverDiff\Node\Iterator\RecursiveNodeIterator;
 
-$diff = new CloverDiff();
+$diff = Factory::getCloverDiff();
 $report = $diff->compare([
   '/path/to/clover1.xml',
   '/path/to/clover2.xml',
@@ -48,19 +48,18 @@ A build in HTML report generator can also be used if the symfony/filesystem libr
 ```php
 <?php
 
-use GergelyRozsas\CloverDiff\CloverDiff;
-use GergelyRozsas\CloverDiff\Report;
+use GergelyRozsas\CloverDiff\Factory;
 
-$diff = new CloverDiff();
+$diff = Factory::getCloverDiff();
 $report = $diff->compare([
   '/path/to/clover1.xml',
   '/path/to/clover2.xml',
 ]);
 
-$generator = new Report\Html();
+$generator = Factory::getHtmlReport();
 $options = $generator->process($report);
 
-echo "The report was generated into the '{$options['target']}' directory.";
+echo "The report was generated into the '{$options['target']}' directory.\n";
 ```
 
 ## Credits
