@@ -4,12 +4,14 @@ namespace GergelyRozsas\CloverDiff\Tests\Node;
 
 use GergelyRozsas\CloverDiff\Node\DirectoryNode;
 use GergelyRozsas\CloverDiff\Node\FileNode;
-use PHPUnit\Framework\TestCase;
+use GergelyRozsas\CloverDiff\Node\NodeInterface;
+use GergelyRozsas\CloverDiff\Node\Revision\FileNodeRevision;
+use GergelyRozsas\CloverDiff\Tests\AbstractTest;
 
 /**
  * @covers \GergelyRozsas\CloverDiff\Node\DirectoryNode
  */
-class DirectoryNodeTest extends TestCase {
+class DirectoryNodeTest extends AbstractTest {
 
   /**
    * @var \GergelyRozsas\CloverDiff\Node\DirectoryNode
@@ -24,24 +26,21 @@ class DirectoryNodeTest extends TestCase {
   }
 
   /**
-   * @dataProvider dataProvider
+   * @dataProvider structureDataProvider
    */
-  public function testGetters(array $files, array $expected, array $expected_children): void {
+  public function testStructure(array $files, array $expected): void {
     foreach ($files as $file) {
       $this->unit->addFile($file);
     }
 
-    $this->assertEquals($expected['elements'], $this->unit->getElements());
-    $this->assertEquals($expected['covered_elements'], $this->unit->getCoveredElements());
-
-    foreach ($expected_children as $path_string => $child_expectations) {
+    foreach ($expected as $path_string => $expectations) {
       $path = $this->pathStringToPathArray($path_string);
-      $child = $this->unit->getChild($path);
+      $child = $this->getChild($path);
 
-      if ($child_expectations['class']) {
-        $this->assertInstanceOf($child_expectations['class'], $child);
-        $this->assertEquals($child_expectations['elements'], $child->getElements());
-        $this->assertEquals($child_expectations['covered_elements'], $child->getCoveredElements());
+      if ($expectations['class']) {
+        $this->assertInstanceOf($expectations['class'], $child);
+        $this->assertEquals($expectations['elements'], $child->getElements());
+        $this->assertEquals($expectations['covered_elements'], $child->getCoveredElements());
         continue;
       }
 
@@ -49,7 +48,7 @@ class DirectoryNodeTest extends TestCase {
     }
   }
 
-  public function dataProvider(): iterable {
+  public function structureDataProvider(): iterable {
     $cases = [
       'test case 1' => [
         'files' => [
@@ -57,9 +56,8 @@ class DirectoryNodeTest extends TestCase {
           $this->createFileNode('dir_a/dir_b/file2', 10, 5),
           $this->createFileNode('dir_a/dir_b/dir_c/file3', 10, 5),
         ],
-        'expected' => ['elements' => 30, 'covered_elements' => 15],
-        'expected_children' => [
-          '' => ['class' => NULL],
+        'expected' => [
+          '' => ['class' => DirectoryNode::class, 'elements' => 30, 'covered_elements' => 15],
           'this_does_not_exist' => ['class' => NULL],
           'dir_a' => ['class' => DirectoryNode::class, 'elements' => 30, 'covered_elements' => 15],
           'dir_a/dir_b' => ['class' => DirectoryNode::class, 'elements' => 30, 'covered_elements' => 15],
@@ -77,7 +75,7 @@ class DirectoryNodeTest extends TestCase {
     }
   }
 
-  private function createFileNode(string $path_string, int $elements, int $covered_elements) {
+  private function createFileNode(string $path_string, int $elements, int $covered_elements): FileNode {
     $path = $this->pathStringToPathArray($path_string);
 
     /** @var \GergelyRozsas\CloverDiff\Node\FileNode|\Prophecy\Prophecy\ObjectProphecy $prophecy */
@@ -86,11 +84,42 @@ class DirectoryNodeTest extends TestCase {
     $prophecy->getName()->willReturn(\end($path));
     $prophecy->getElements()->willReturn($elements);
     $prophecy->getCoveredElements()->willReturn($covered_elements);
+    $prophecy->getChildren()->willReturn(NULL);
+    $prophecy->getRevisions()->willReturn([
+      $this->createFileNodeRevision(0, 1000, $elements, $covered_elements),
+    ]);
     return $prophecy->reveal();
   }
 
   private function pathStringToPathArray(string $path): array {
     return !\strlen($path) ? [] : \explode('/', $path);
+  }
+
+  private function createFileNodeRevision(
+    int $revision_id,
+    int $timestamp,
+    ?int $elements,
+    ?int $covered_elements
+  ): FileNodeRevision {
+    /** @var \GergelyRozsas\CloverDiff\Node\Revision\FileNodeRevision|\Prophecy\Prophecy\ObjectProphecy $prophecy */
+    $prophecy = $this->prophesize(FileNodeRevision::class);
+    $prophecy->getRevisionId()->willReturn($revision_id);
+    $prophecy->getTimestamp()->willReturn($timestamp);
+    $prophecy->getElements()->willReturn($elements);
+    $prophecy->getCoveredElements()->willReturn($covered_elements);
+    return $prophecy->reveal();
+  }
+
+  private function getChild(array $path_elements): ?NodeInterface {
+    $node = $this->unit;
+    foreach ($path_elements as $path_element) {
+      $children = $node->getChildren() ?? [];
+      if (!isset($children[$path_element])) {
+        return NULL;
+      }
+      $node = $children[$path_element];
+    }
+    return $node;
   }
 
 }

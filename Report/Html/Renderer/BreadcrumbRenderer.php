@@ -2,7 +2,7 @@
 
 namespace GergelyRozsas\CloverDiff\Report\Html\Renderer;
 
-use GergelyRozsas\CloverDiff\Diff\NodeDiff;
+use GergelyRozsas\CloverDiff\Node\DirectoryNode;
 use GergelyRozsas\CloverDiff\Report\Html\Engine\EngineInterface;
 use GergelyRozsas\CloverDiff\Utility\Path;
 
@@ -19,8 +19,8 @@ class BreadcrumbRenderer {
     $this->engine = $engine;
   }
 
-  public function render(NodeDiff $diff): string {
-    $path = array_merge(['root'], $diff->getPath());
+  public function render(DirectoryNode $node): string {
+    $path = array_merge(['root'], $node->getPath());
     $active = array_pop($path);
     $count = count($path);
 

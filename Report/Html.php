@@ -2,7 +2,10 @@
 
 namespace GergelyRozsas\CloverDiff\Report;
 
-use GergelyRozsas\CloverDiff\Diff\NodeDiff;
+use GergelyRozsas\CloverDiff\Node\DirectoryNode;
+use GergelyRozsas\CloverDiff\Node\Iterator\DirectoryOnlyFilterIterator;
+use GergelyRozsas\CloverDiff\Node\Iterator\RecursiveNodeIterator;
+use GergelyRozsas\CloverDiff\Node\NodeInterface;
 use GergelyRozsas\CloverDiff\Report\Html\Renderer\DirectoryRenderer;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -19,24 +22,20 @@ class Html {
   private $fileSystem;
 
   public function __construct(
-    ?DirectoryRenderer $directory_renderer = NULL,
-    ?Filesystem $file_system = NULL
+    DirectoryRenderer $directory_renderer,
+    Filesystem $file_system
   ) {
-    $this->directoryRenderer = $directory_renderer ?? new DirectoryRenderer();
-    $this->fileSystem = $file_system ?? new Filesystem();
+    $this->directoryRenderer = $directory_renderer;
+    $this->fileSystem = $file_system;
   }
 
-  public function process(iterable $report, array $options = []): array {
+  public function process(DirectoryNode $node, array $options = []): array {
     $options = $this->normalizeOptions($options);
     $this->copyAssets($options);
 
-    foreach ($report as $diff) {
-      if ($diff->isDirectoryNode()) {
-        $this->fileSystem->dumpFile(
-          $this->getIndexFilePath($options['target'], $diff),
-          $this->directoryRenderer->render($diff, $options)
-        );
-      }
+    $this->dumpDirectoryPage($node, $options);
+    foreach ($this->getSubdirectoryNodes($node) as $subdirectory_node) {
+      $this->dumpDirectoryPage($subdirectory_node, $options);
     }
 
     return $options;
@@ -64,11 +63,30 @@ class Html {
     $this->fileSystem->mirror($options['assets_dir'], "{$options['target']}/.assets");
   }
 
-  private function getIndexFilePath(string $target, NodeDiff $diff): string {
+  private function dumpDirectoryPage(DirectoryNode $node, array $options): void {
+    $this->fileSystem->dumpFile(
+      $this->getIndexFilePath($node, $options['target']),
+      $this->directoryRenderer->render($node, $options)
+    );
+  }
+
+  private function getIndexFilePath(NodeInterface $node, string $target): string {
     return \vsprintf('%s/%s/index.html', [
       $target,
-      \implode('/', $diff->getPath()),
+      \implode('/', $node->getPath()),
     ]);
+  }
+
+  /**
+   * @param \GergelyRozsas\CloverDiff\Node\DirectoryNode $node
+   *
+   * @return \GergelyRozsas\CloverDiff\Node\DirectoryNode[]
+   */
+  private function getSubdirectoryNodes(DirectoryNode $node): iterable {
+    $iterator = new RecursiveNodeIterator($node);
+    $iterator = new DirectoryOnlyFilterIterator($iterator);
+    $iterator = new \RecursiveIteratorIterator($iterator, \RecursiveIteratorIterator::SELF_FIRST);
+    return $iterator;
   }
 
 }

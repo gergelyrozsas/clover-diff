@@ -11,15 +11,15 @@ use PHPUnit\Framework\TestCase;
 class PathTest extends TestCase {
 
   /**
-   * @covers ::commonPrefix
+   * @covers ::commonDirectory
    *
-   * @dataProvider commonPrefixDataProvider
+   * @dataProvider commonDirectoryDataProvider
    */
-  public function testCommonPrefix(array $paths, string $expected) {
-    $this->assertEquals($expected, Path::commonPrefix($paths));
+  public function testCommonDirectory(array $paths, string $expected) {
+    $this->assertEquals($expected, Path::commonDirectory($paths));
   }
 
-  public function commonPrefixDataProvider(): iterable {
+  public function commonDirectoryDataProvider(): iterable {
     $cases = [
       'case: paths array is empty' => [
         [],
@@ -30,15 +30,35 @@ class PathTest extends TestCase {
         '',
       ],
       'case: common prefix exists' => [
-        ['aaaa', 'aaab', 'abaa'],
-        'a',
-      ],
-      'case: common prefix is the "lowest" string' => [
-        ['aaa', 'aaabbb', 'aaabcd'],
-        'aaa',
+        ['dir1/aaa', 'dir1/aab', 'dir1/abc'],
+        'dir1/',
       ],
     ];
     return $cases;
+  }
+
+  /**
+   * @dataProvider commonFilePathDataProvider
+   */
+  public function testCommonFilePath(array $paths, string $expected): void {
+    $this->assertEquals($expected, Path::commonFilePath($paths));
+  }
+
+  public function commonFilePathDataProvider(): iterable {
+    return [
+      'case: paths array is empty' => [
+        [],
+        ''
+      ],
+      'case: no common file path exist' => [
+        ['a', 'b', 'c'],
+        '',
+      ],
+      'case: common file path exists' => [
+        ['/some1/dir1/some/file/path', '/some2/dir2/some/file/path', 'some3/dir3/some/file/path'],
+        '/some/file/path',
+      ],
+    ];
   }
 
   /**
@@ -89,6 +109,25 @@ class PathTest extends TestCase {
       [62],
     ];
     return $cases;
+  }
+
+  /**
+   * @covers ::isEmptyPath
+   *
+   * @dataProvider isEmptyPathDataProvider
+   */
+  public function testIsEmptyPath(string $path, bool $expected): void {
+    $this->assertEquals($expected, Path::isEmptyPath($path));
+  }
+
+  public function isEmptyPathDataProvider(): iterable {
+    return [
+      'empty string' => ['', TRUE],
+      'zero string' => ['0', FALSE],
+      'slash' => ['/', TRUE],
+      'unix style' => ['/this/is/not/empty', FALSE],
+      'windows style' => ['C:\\this\\is\\not\\empty\\either', FALSE],
+    ];
   }
 
 }
