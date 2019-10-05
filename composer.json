@@ -12,7 +12,8 @@
     ],
     "require": {
         "php": "^7.2",
-        "ext-simplexml": "*"
+        "ext-simplexml": "*",
+        "psr/container": "^1.0"
     },
     "require-dev": {
         "symfony/filesystem": "^4.2"
