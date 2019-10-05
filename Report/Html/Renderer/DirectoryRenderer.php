@@ -6,7 +6,6 @@ use GergelyRozsas\CloverDiff\Node\Iterator\NodeIterator;
 use GergelyRozsas\CloverDiff\Node\DirectoryNode;
 use GergelyRozsas\CloverDiff\Node\Iterator\SortableIterator;
 use GergelyRozsas\CloverDiff\Report\Html\Engine\EngineInterface;
-use GergelyRozsas\CloverDiff\Report\Html\Engine\PhpEngine;
 use GergelyRozsas\CloverDiff\Report\Html\Utility\NodeSort;
 use GergelyRozsas\CloverDiff\Utility\Path;
 use GergelyRozsas\CloverDiff\Version;
@@ -29,13 +28,13 @@ class DirectoryRenderer {
   private $directoryItemRenderer;
 
   public function __construct(
-    ?EngineInterface $engine = NULL,
-    ?BreadcrumbRenderer $breadcrumb_renderer = NULL,
-    ?DirectoryItemRenderer $directory_item_renderer = NULL
+    EngineInterface $engine,
+    BreadcrumbRenderer $breadcrumb_renderer,
+    DirectoryItemRenderer $directory_item_renderer
   ) {
-    $this->engine = $engine ?? new PhpEngine();
-    $this->breadcrumbRenderer = $breadcrumb_renderer ?? new BreadcrumbRenderer($this->engine);
-    $this->directoryItemRenderer = $directory_item_renderer ?? new DirectoryItemRenderer($this->engine);
+    $this->engine = $engine;
+    $this->breadcrumbRenderer = $breadcrumb_renderer;
+    $this->directoryItemRenderer = $directory_item_renderer;
   }
 
   public function render(DirectoryNode $node, array $options = []): string {

@@ -22,11 +22,11 @@ class Html {
   private $fileSystem;
 
   public function __construct(
-    ?DirectoryRenderer $directory_renderer = NULL,
-    ?Filesystem $file_system = NULL
+    DirectoryRenderer $directory_renderer,
+    Filesystem $file_system
   ) {
-    $this->directoryRenderer = $directory_renderer ?? new DirectoryRenderer();
-    $this->fileSystem = $file_system ?? new Filesystem();
+    $this->directoryRenderer = $directory_renderer;
+    $this->fileSystem = $file_system;
   }
 
   public function process(DirectoryNode $node, array $options = []): array {
