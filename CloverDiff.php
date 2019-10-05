@@ -3,12 +3,8 @@
 namespace GergelyRozsas\CloverDiff;
 
 use GergelyRozsas\CloverDiff\Clover\CloverCollection;
-use GergelyRozsas\CloverDiff\Clover\Parser;
-use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\DelegatingCollectionNormalizer;
-use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CommonClassBasedCollectionNormalizer;
-use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\EquivalentRootDirectoryBasedCollectionNormalizer;
 use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CollectionNormalizerInterface;
-use GergelyRozsas\CloverDiff\Clover\Collection\Normalizer\CollectionNormalizerResolver;
+use GergelyRozsas\CloverDiff\Clover\Parser;
 use GergelyRozsas\CloverDiff\Node\DirectoryNode;
 use GergelyRozsas\CloverDiff\Node\FileNode;
 use GergelyRozsas\CloverDiff\Utility\Path;
@@ -29,16 +25,11 @@ class CloverDiff {
   private $normalizer;
 
   public function __construct(
-    ?Parser $parser = NULL,
-    ?CollectionNormalizerInterface $normalizer = NULL
+    Parser $parser,
+    CollectionNormalizerInterface $normalizer
   ) {
-    $this->parser = $parser ?? new Parser();
-    $this->normalizer = $normalizer ?? new DelegatingCollectionNormalizer(
-      new CollectionNormalizerResolver([
-        20 => [new EquivalentRootDirectoryBasedCollectionNormalizer()],
-        10 => [new CommonClassBasedCollectionNormalizer()],
-      ])
-    );
+    $this->parser = $parser;
+    $this->normalizer = $normalizer;
   }
 
   /**

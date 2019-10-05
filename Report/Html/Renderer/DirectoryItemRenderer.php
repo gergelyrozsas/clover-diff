@@ -25,12 +25,12 @@ class DirectoryItemRenderer {
 
   public function __construct(
     EngineInterface $engine,
-    ?CoverageBarRenderer $coverage_bar_renderer = NULL,
-    ?DiffBarRenderer $diff_bar_renderer = NULL
+    CoverageBarRenderer $coverage_bar_renderer,
+    DiffBarRenderer $diff_bar_renderer
   ) {
     $this->engine = $engine;
-    $this->coverageBarRenderer = $coverage_bar_renderer ?? new CoverageBarRenderer($this->engine);
-    $this->diffBarRenderer = $diff_bar_renderer ?? new DiffBarRenderer($this->engine);
+    $this->coverageBarRenderer = $coverage_bar_renderer;
+    $this->diffBarRenderer = $diff_bar_renderer;
   }
 
   public function render(NodeInterface $node, array $options) {
